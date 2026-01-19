@@ -1,0 +1,303 @@
+'use client';
+
+import { useRef, useMemo, useState, useEffect } from 'react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Paperclip, X } from 'lucide-react';
+import { toast } from 'sonner';
+
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { useDismantlingManagement } from '@/hooks/useDismantlingManagement';
+
+export function DismantlingAttachmentsCard({ activity, setActivity }) {
+  const { updateDismantling, isUpdating } = useDismantlingManagement();
+  const fileInputRef = useRef(null);
+  const [hasFiles, setHasFiles] = useState(false);
+
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
+
+  // Local selection for not-yet-uploaded files
+  const [selectedFiles, setSelectedFiles] = useState([]); // [{id,file,previewUrl}]
+
+  // Existing attachments from backend (dismantling.addAttachments)
+  const existingDismantlingAttachments = useMemo(
+    () => activity?.dismantling?.addAttachments || [],
+    [activity?.dismantling?.addAttachments]
+  );
+
+  const resolveUrl = (path) => {
+    if (!path) return '';
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+
+    const base = process.env.NEXT_PUBLIC_API_URL || '';
+    return `${base}${path}`;
+  };
+
+  // Cleanup object URLs on unmount
+  useEffect(() => {
+    return () => {
+      selectedFiles.forEach((item) => {
+        URL.revokeObjectURL(item.previewUrl);
+      });
+    };
+  }, [selectedFiles]);
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files || []);
+
+    if (!files.length) {
+      // No selection
+      selectedFiles.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      setSelectedFiles([]);
+      setHasFiles(false);
+      return;
+    }
+
+    // Revoke previous URLs
+    selectedFiles.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+
+    const mapped = files.map((file, index) => ({
+      id: `${file.name}-${file.lastModified}-${index}`,
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }));
+
+    setSelectedFiles(mapped);
+    setHasFiles(files.length > 0 && files[0].size > 0);
+  };
+
+  const handleRemoveSelected = (id) => {
+    setSelectedFiles((prev) => {
+      const remaining = prev.filter((item) => item.id !== id);
+      const removed = prev.find((item) => item.id === id);
+
+      // Revoke URL for removed file
+      if (removed) {
+        URL.revokeObjectURL(removed.previewUrl);
+      }
+
+      // Rebuild input.files so it matches remaining selection
+      if (fileInputRef.current) {
+        const dt = new DataTransfer();
+        remaining.forEach((item) => dt.items.add(item.file));
+        fileInputRef.current.files = dt.files;
+      }
+
+      if (!remaining.length) {
+        setHasFiles(false);
+      }
+
+      return remaining;
+    });
+  };
+
+  const handleAttachmentsUpload = async (e) => {
+    e.preventDefault();
+
+    if (!activity?._id) return;
+
+    if (!fileInputRef.current || !fileInputRef.current.files) {
+      toast.error('Please select at least one image');
+      return;
+    }
+
+    const files = fileInputRef.current.files;
+
+    if (!files.length || (files.length === 1 && files[0].size === 0)) {
+      toast.error('Please select at least one image');
+      return;
+    }
+
+    const formData = new FormData();
+
+    // IMPORTANT: tell backend this is for dismantling
+    formData.append('attachmentTarget', 'dismantling');
+
+    Array.from(files).forEach((file) => {
+      formData.append('attachments', file);
+    });
+
+    try {
+      const updated = await updateDismantling(activity._id, formData);
+      const updatedActivity = updated?.data || updated;
+      const updatedDismantling =
+        updatedActivity?.dismantling || activity.dismantling || {};
+
+      setActivity((prev) => ({
+        ...prev,
+        dismantling: updatedDismantling,
+      }));
+
+      // Clear input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+
+      // Clear local previews
+      selectedFiles.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      setSelectedFiles([]);
+      setHasFiles(false);
+
+      toast.success('Dismantling attachments uploaded');
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Failed to upload dismantling attachments';
+      toast.error(msg);
+    }
+  };
+
+  return (
+    <>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Paperclip className="w-4 h-4" />
+              Dismantling Attachments
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Upload dismantling photos and view existing attachments.
+            </p>
+          </div>
+          {existingDismantlingAttachments.length > 0 && (
+            <Badge variant="outline" className="text-xs">
+              {existingDismantlingAttachments.length} file
+              {existingDismantlingAttachments.length > 1 ? 's' : ''}
+            </Badge>
+          )}
+        </CardHeader>
+
+        <CardContent className="space-y-4 text-sm">
+          {/* Upload form */}
+          <form className="space-y-3" onSubmit={handleAttachmentsUpload}>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">
+                Upload Images
+              </Label>
+
+              {/* Hidden File Input */}
+              <input
+                ref={fileInputRef}
+                name="attachments"
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleFileChange}
+              />
+
+              <div className="flex items-center gap-3">
+                {/* Custom Upload Button (opens file dialog) */}
+                <Button
+                  size="sm"
+                  variant="default"
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="cursor-pointer"
+                >
+                  Select Files
+                </Button>
+
+                {/* Submit button */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  type="submit"
+                  disabled={isUpdating || !hasFiles}
+                >
+                  {isUpdating ? 'Uploading...' : 'Upload'}
+                </Button>
+              </div>
+
+              <p className="text-[11px] text-muted-foreground">
+                Images will be stored as dismantling-level attachments.
+              </p>
+            </div>
+          </form>
+
+          {/* Selected (NOT YET UPLOADED) previews */}
+          {selectedFiles.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
+                Selected files (not uploaded yet)
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {selectedFiles.map((item) => (
+                  <div
+                    key={item.id}
+                    className="relative border border-border rounded-md overflow-hidden bg-muted group"
+                  >
+                    <img
+                      src={item.previewUrl}
+                      alt={item.file.name}
+                      className="w-full h-24 object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSelected(item.id)}
+                      className="absolute top-1 right-1 bg-black/70 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                These images will be uploaded once you click &quot;Upload&quot;.
+              </p>
+            </div>
+          )}
+
+          {/* Existing attachments from server */}
+          {existingDismantlingAttachments.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
+                Existing Attachments
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {existingDismantlingAttachments.map((url, idx) => {
+                  const fullUrl = resolveUrl(url);
+                  return (
+                    <button
+                      type="button"
+                      key={`${url}-${idx}`}
+                      className="border border-border rounded-md overflow-hidden bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
+                      onClick={() => {
+                        setPreviewUrl(fullUrl);
+                        setPreviewOpen(true);
+                      }}
+                    >
+                      <img
+                        src={fullUrl}
+                        alt={`Dismantling attachment ${idx + 1}`}
+                        className="w-full h-24 object-cover"
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Preview dialog for existing attachments */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-3xl">
+          {previewUrl && (
+            <img
+              src={previewUrl}
+              alt="Dismantling attachment preview"
+              className="w-full h-auto object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}

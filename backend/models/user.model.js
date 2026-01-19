@@ -1,0 +1,96 @@
+// models/user.model.js
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
+const userSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: [true, 'Please add a name'],
+    trim: true,
+    maxlength: [50, 'Name cannot be more than 50 characters']
+  },
+  email: {
+    type: String,
+    // unique: true,
+    // sparse: true,
+    lowercase: true,
+    trim: true,
+    default: undefined, // Use undefined instead of null
+    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please add a valid email']
+  },
+  password: {
+    type: String,
+    required: [true, 'Please add a password'],
+    minlength: 6,
+    select: false
+  },
+  phone: {
+    type: String,
+    required: [true, 'Please add a phone number'],
+    unique: true,
+    maxlength: [20, 'Phone number cannot be longer than 20 characters']
+  },
+  role: {
+    type: String,
+  },
+  department: {
+    type: String,
+  },
+  isActive: { type: Boolean, default: true },
+  lastLogin: { type: Date },
+  createdAt: { type: Date, default: Date.now }
+});
+
+// Create a custom index with partialFilterExpression
+userSchema.index({ email: 1 }, {
+  unique: true, 
+  sparse: true,
+  partialFilterExpression: { email: { $exists: true, $ne: null, $ne: '' } }
+});
+
+// Hash password before saving (only if modified)
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) {
+    return next();
+  }
+
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Method to update password with hashing
+userSchema.methods.updatePassword = async function (newPassword) {
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(newPassword, salt);
+  return this.save();
+};
+
+// Sign JWT and return
+userSchema.methods.getSignedJwtToken = function () {
+  return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRE,
+  });
+};
+
+// Match user entered password to hashed password in database
+userSchema.methods.matchPassword = async function (enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
+
+// Virtual for initials (for avatar)
+userSchema.virtual('initials').get(function () {
+  return this.name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase();
+});
+
+
+module.exports = mongoose.model('User', userSchema);
