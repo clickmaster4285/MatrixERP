@@ -1,6 +1,6 @@
 // controllers/siteController.js
 const Site = require('../models/Site.model');
-const Project = require('../models/Project.model');
+const Project = require('../models/project.model');
 const DismantlingActivity = require('../models/dismantlingActivity.model');
 const CowActivity = require('../models/COWActivity.model');
 const RelocationActivity = require('../models/RelocationActivity.model');
