@@ -1,5 +1,5 @@
 // controllers/project.controller.js
-const Project = require('../models/Project.model');
+const Project = require('../models/project.model');
 const Site = require('../models/Site.model');
 const User = require('../models/user.model');
 const ErrorResponse = require('../utils/errorResponse');

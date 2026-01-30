@@ -1,6 +1,6 @@
 // models/index.js
 const User = require('./user.model');
-const Project = require('./Project.model');
+const Project = require('./project.model');
 const Site = require('./Site.model');
 const dismantling = require('./dismantlingActivity.model');
 const RelocationActivity = require('./RelocationActivity.model');
