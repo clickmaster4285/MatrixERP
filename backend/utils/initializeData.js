@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const initializeAdmin = require('./inatializeAdmin');
+const initializeAdmin = require('./initializeAdmin');
 const initEmployees = require('./initEmployees');
 const initInventory = require('./initInventory');
 
@@ -13,13 +13,16 @@ const MARKER_PATH = path.join(process.cwd(), '.dev-seed-done');
 
 const initializeAllData = async () => {
   try {
-    // ✅ If DB is empty, force seed (even if marker exists)
+    // ✅ Always initialize admin (checks if exists before creating)
+    await initializeAdmin();
+
+    // ✅ If DB is empty, force seed employees and inventory (even if marker exists)
     const usersCount = await User.countDocuments();
     const invCount = await Inventory.countDocuments();
 
     const dbIsEmpty = usersCount === 0 || invCount === 0;
 
-    // ✅ Normal behavior: seed only once per dev run
+    // ✅ Normal behavior: seed employees/inventory only once per dev run
     if (!dbIsEmpty && fs.existsSync(MARKER_PATH)) return;
 
     // create marker early to avoid double-run on quick restarts
@@ -27,9 +30,6 @@ const initializeAllData = async () => {
       fs.writeFileSync(MARKER_PATH, `seeded_at=${new Date().toISOString()}\n`);
     }
 
-
-
-    await initializeAdmin();
     await initEmployees();
     await initInventory({ minQty: 10 });
 
