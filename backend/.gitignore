@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Uploads / user files
+uploads/
+
+# Logs
+logs/
+*.log
+
+# Runtime / temp
+tmp/
+coverage/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor configs
+.vscode/
+.idea/

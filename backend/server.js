@@ -21,8 +21,8 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-const HOST = process.env.HOST || 'localhost';
-const PORT = process.env.PORT || 5001; // Changed to 5001 temporarily
+const HOST = process.env.HOST ;
+const PORT = process.env.PORT; 
 
 // Serve static files (uploads folder)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
