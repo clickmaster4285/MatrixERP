@@ -114,10 +114,10 @@ exports.createProject = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('End date must be after start date', 400));
   }
 
-  const managerUser = await User.findOne({ _id: manager, role: 'manager' });
-  if (!managerUser) {
-    return next(new ErrorResponse('Manager not found or user is not a manager', 400));
-  }
+  // const managerUser = await User.findOne({ _id: manager, role: 'manager' });
+  // if (!managerUser) {
+  //   return next(new ErrorResponse('Manager not found or user is not a manager', 400));
+  // }
 
   const project = await Project.create({
     name,
@@ -760,12 +760,12 @@ exports.updateProject = asyncHandler(async (req, res, next) => {
   const { name, description, manager, startDate, endDate, status } = req.body;
 
   // Validate manager if being updated
-  if (manager && manager !== project.manager.toString()) {
-    const managerUser = await User.findOne({ _id: manager, role: 'manager' });
-    if (!managerUser) {
-      return next(new ErrorResponse('Manager not found or user is not a manager', 400));
-    }
-  }
+  // if (manager && manager !== project.manager.toString()) {
+  //   const managerUser = await User.findOne({ _id: manager, role: 'manager' });
+  //   if (!managerUser) {
+  //     return next(new ErrorResponse('Manager not found or user is not a manager', 400));
+  //   }
+  // }
 
   if (startDate && endDate && new Date(startDate) >= new Date(endDate)) {
     return next(new ErrorResponse('End date must be after start date', 400));

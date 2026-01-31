@@ -42,8 +42,8 @@ const startServer = async () => {
   try {
     await connectDB();
     await initializeAllData();
-    server.listen(PORT, HOST, () => {
-      console.log(`Server is running on http://${HOST}:${PORT}`);
+    server.listen(PORT, () => {
+      console.log(`Server is running on {PORT}`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
