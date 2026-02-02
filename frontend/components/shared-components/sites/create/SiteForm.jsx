@@ -59,7 +59,7 @@ export default function SiteForm({
    }, [usersRes]);
 
    const managers = useMemo(
-      () => users.filter((u) => u.role === 'manager'),
+      () => users.filter((u) => u.role === 'project-manager'),
       [users]
    );
 
