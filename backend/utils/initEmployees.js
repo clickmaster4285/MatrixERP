@@ -4,8 +4,8 @@ const User = require('../models/user.model');
 // Your given list (Sr.No becomes EMP id)
 const EMPLOYEES = [
   { sr: 1, name: 'Karim Khan', designation: 'Director-Projects' },
-  { sr: 2, name: 'Imran Anwar', designation: 'Project-Manager' },
-  { sr: 3, name: 'Zubair Abdul Khaliq', designation: 'Project-Manager' },
+  { sr: 2, name: 'Imran Anwar', designation: 'Manager' },
+  { sr: 3, name: 'Zubair Abdul Khaliq', designation: 'Manager' },
   { sr: 4, name: 'Muhammad Imran', designation: 'Regional Project-manger' },
   { sr: 5, name: 'Fakher Sohail', designation: 'supervisor-civil' },
   { sr: 6, name: 'Muhammad Atif', designation: 'RAN-Engineer' },
